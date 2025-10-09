@@ -1,0 +1,316 @@
+<template>
+  <div class="homework-list">
+    <el-card>
+      <template #header>
+        <div class="card-header">
+          <span>作业管理</span>
+          <el-button type="primary" @click="showAddDialog = true">
+            <el-icon><Plus /></el-icon>
+            发布作业
+          </el-button>
+        </div>
+      </template>
+
+      <!-- 搜索和筛选 -->
+      <div class="filter-container">
+        <el-input
+          v-model="searchText"
+          placeholder="搜索作业标题或课程名称"
+          style="width: 300px; margin-right: 10px;"
+          clearable
+        />
+        <el-button type="primary" @click="loadHomework">
+          <el-icon><Search /></el-icon>
+          搜索
+        </el-button>
+        <el-button @click="resetSearch">
+          <el-icon><Refresh /></el-icon>
+          重置
+        </el-button>
+        <el-button type="success" @click="showActiveOnly = !showActiveOnly">
+          <el-icon><Clock /></el-icon>
+          {{ showActiveOnly ? '显示全部' : '仅显示有效作业' }}
+        </el-button>
+      </div>
+
+      <!-- 作业表格 -->
+      <el-table
+        :data="filteredHomework"
+        v-loading="loading"
+        style="width: 100%; margin-top: 20px;"
+      >
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="title" label="作业标题" min-width="200" />
+        <el-table-column prop="courseName" label="课程名称" width="150" />
+        <el-table-column prop="description" label="作业描述" min-width="250" show-overflow-tooltip />
+        <el-table-column prop="deadline" label="截止时间" width="180">
+          <template #default="scope">
+            {{ formatDate(scope.row.deadline) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="totalScore" label="总分" width="100" />
+        <el-table-column prop="createTime" label="发布时间" width="180">
+          <template #default="scope">
+            {{ formatDate(scope.row.createTime) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="100">
+          <template #default="scope">
+            <el-tag :type="isActive(scope.row.deadline) ? 'success' : 'danger'">
+              {{ isActive(scope.row.deadline) ? '进行中' : '已截止' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="200" fixed="right">
+          <template #default="scope">
+            <el-button
+              size="small"
+              type="primary"
+              @click="handleEdit(scope.row)"
+            >
+              编辑
+            </el-button>
+            <el-button
+              size="small"
+              type="danger"
+              @click="handleDelete(scope.row)"
+            >
+              删除
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
+    <!-- 添加/编辑作业对话框 -->
+    <el-dialog
+      :title="isEditing ? '编辑作业' : '发布作业'"
+      v-model="showAddDialog"
+      width="600px"
+    >
+      <el-form
+        :model="homeworkForm"
+        :rules="rules"
+        ref="homeworkFormRef"
+        label-width="100px"
+      >
+        <el-form-item label="作业标题" prop="title">
+          <el-input v-model="homeworkForm.title" />
+        </el-form-item>
+        <el-form-item label="课程名称" prop="courseName">
+          <el-input v-model="homeworkForm.courseName" />
+        </el-form-item>
+        <el-form-item label="作业描述" prop="description">
+          <el-input
+            v-model="homeworkForm.description"
+            type="textarea"
+            :rows="4"
+          />
+        </el-form-item>
+        <el-form-item label="截止时间" prop="deadline">
+          <el-date-picker
+            v-model="homeworkForm.deadline"
+            type="datetime"
+            placeholder="选择截止时间"
+            style="width: 100%;"
+          />
+        </el-form-item>
+        <el-form-item label="总分" prop="totalScore">
+          <el-input-number
+            v-model="homeworkForm.totalScore"
+            :min="1"
+            :max="200"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showAddDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleSubmit">
+          {{ isEditing ? '更新' : '发布' }}
+        </el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import { homeworkApi } from '../services/api.js'
+
+export default {
+  name: 'HomeworkList',
+  data() {
+    return {
+      homework: [],
+      filteredHomework: [],
+      loading: false,
+      searchText: '',
+      showActiveOnly: false,
+      showAddDialog: false,
+      isEditing: false,
+      homeworkForm: {
+        title: '',
+        courseName: '',
+        description: '',
+        deadline: '',
+        totalScore: 100
+      },
+      rules: {
+        title: [
+          { required: true, message: '请输入作业标题', trigger: 'blur' }
+        ],
+        courseName: [
+          { required: true, message: '请输入课程名称', trigger: 'blur' }
+        ],
+        description: [
+          { required: true, message: '请输入作业描述', trigger: 'blur' }
+        ],
+        deadline: [
+          { required: true, message: '请选择截止时间', trigger: 'change' }
+        ],
+        totalScore: [
+          { required: true, message: '请输入总分', trigger: 'blur' }
+        ]
+      }
+    }
+  },
+  async mounted() {
+    await this.loadHomework()
+  },
+  methods: {
+    async loadHomework() {
+      this.loading = true
+      try {
+        const response = await homeworkApi.getAllHomework()
+        this.homework = response
+        this.filteredHomework = response
+      } catch (error) {
+        console.error('加载作业列表失败:', error)
+        this.$message.error('加载作业列表失败')
+      } finally {
+        this.loading = false
+      }
+    },
+
+    resetSearch() {
+      this.searchText = ''
+      this.showActiveOnly = false
+      this.filteredHomework = this.homework
+    },
+
+    isActive(deadline) {
+      return new Date(deadline) > new Date()
+    },
+
+    handleEdit(homework) {
+      this.isEditing = true
+      this.homeworkForm = { 
+        ...homework,
+        deadline: new Date(homework.deadline)
+      }
+      this.showAddDialog = true
+    },
+
+    async handleDelete(homework) {
+      try {
+        await this.$confirm('确定要删除这个作业吗？', '提示', {
+          type: 'warning'
+        })
+        
+        const success = await homeworkApi.deleteHomework(homework.id)
+        if (success) {
+          this.$message.success('删除成功')
+          await this.loadHomework()
+        } else {
+          this.$message.error('删除失败')
+        }
+      } catch (error) {
+        if (error !== 'cancel') {
+          console.error('删除作业失败:', error)
+          this.$message.error('删除失败')
+        }
+      }
+    },
+
+    async handleSubmit() {
+      try {
+        await this.$refs.homeworkFormRef.validate()
+        
+        // 格式化截止时间
+        const formattedData = {
+          ...this.homeworkForm,
+          deadline: this.homeworkForm.deadline.toISOString()
+        }
+        
+        let success
+        if (this.isEditing) {
+          success = await homeworkApi.updateHomework(this.homeworkForm.id, formattedData)
+        } else {
+          success = await homeworkApi.createHomework(formattedData)
+        }
+        
+        if (success) {
+          this.$message.success(this.isEditing ? '更新成功' : '发布成功')
+          this.showAddDialog = false
+          await this.loadHomework()
+          this.resetForm()
+        } else {
+          this.$message.error(this.isEditing ? '更新失败' : '发布失败')
+        }
+      } catch (error) {
+        console.error('提交表单失败:', error)
+      }
+    },
+
+    resetForm() {
+      this.homeworkForm = {
+        title: '',
+        courseName: '',
+        description: '',
+        deadline: '',
+        totalScore: 100
+      }
+      this.isEditing = false
+      if (this.$refs.homeworkFormRef) {
+        this.$refs.homeworkFormRef.resetFields()
+      }
+    },
+
+    formatDate(dateString) {
+      if (!dateString) return ''
+      return new Date(dateString).toLocaleString('zh-CN')
+    }
+  },
+  watch: {
+    searchText(val) {
+      this.filteredHomework = this.homework.filter(hw =>
+        hw.title.includes(val) || hw.courseName.includes(val)
+      )
+    },
+    showActiveOnly(val) {
+      if (val) {
+        this.filteredHomework = this.homework.filter(hw => 
+          this.isActive(hw.deadline)
+        )
+      } else {
+        this.filteredHomework = this.homework
+      }
+    }
+  }
+}
+</script>
+
+<style scoped>
+.homework-list {
+  padding: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.filter-container {
+  margin-bottom: 20px;
+}
+</style>
