@@ -1,14 +1,27 @@
 # 学生作业管理系统 (Student Homework Management System)
 
-基于 Java Spring Boot + Vue 3 开发的全栈学生作业管理系统
+基于 Java Spring Boot + Vue 3 开发的全栈学生作业管理系统，支持教师端和学生端双登录系统
 
 ## 功能特性
 
-- 学生信息管理
-- 作业发布管理
-- 作业提交与批改
-- 成绩管理
-- RESTful API 接口
+### 教师端功能
+- 教师登录认证
+- 作业发布和管理
+- 批改学生作业
+- 查看学生提交情况
+- 与学生私信沟通
+
+### 学生端功能
+- 学生登录认证
+- 查看作业列表
+- 提交作业
+- 查看批改结果
+- 与教师私信沟通
+
+### 通用功能
+- 用户注册（教师/学生）
+- 私信系统
+- 角色权限管理
 
 ## 技术栈
 
@@ -49,21 +62,32 @@ spring.datasource.password=your_password
 ```
 src/main/java/com/example/studenthomeworksystem/
 ├── entity/          # 实体类
-│   ├── Student.java
-│   ├── Homework.java
-│   └── HomeworkSubmission.java
+│   ├── User.java                    # 用户实体（教师/学生）
+│   ├── Student.java                 # 学生扩展信息
+│   ├── Teacher.java                 # 教师扩展信息
+│   ├── Homework.java                # 作业实体
+│   ├── HomeworkSubmission.java      # 作业提交实体
+│   └── PrivateMessage.java          # 私信实体
 ├── mapper/          # MyBatis 映射器
+│   ├── UserMapper.java
 │   ├── StudentMapper.java
+│   ├── TeacherMapper.java
 │   ├── HomeworkMapper.java
-│   └── HomeworkSubmissionMapper.java
+│   ├── HomeworkSubmissionMapper.java
+│   └── PrivateMessageMapper.java
 ├── service/         # 业务逻辑层
+│   ├── UserService.java
 │   ├── StudentService.java
+│   ├── TeacherService.java
 │   ├── HomeworkService.java
-│   └── HomeworkSubmissionService.java
+│   ├── HomeworkSubmissionService.java
+│   └── PrivateMessageService.java
 ├── controller/      # REST 控制器
-│   ├── StudentController.java
+│   ├── AuthController.java          # 认证控制器
+│   ├── UserController.java          # 用户管理控制器
 │   ├── HomeworkController.java
-│   └── HomeworkSubmissionController.java
+│   ├── HomeworkSubmissionController.java
+│   └── PrivateMessageController.java # 私信控制器
 └── StudentHomeworkSystemApplication.java  # 主应用类
 ```
 
@@ -72,10 +96,12 @@ src/main/java/com/example/studenthomeworksystem/
 frontend/
 ├── src/
 │   ├── views/           # 页面组件
-│   │   ├── Home.vue     # 首页
-│   │   ├── StudentList.vue      # 学生管理
+│   │   ├── Login.vue            # 登录页面
+│   │   ├── StudentHome.vue      # 学生端首页
+│   │   ├── TeacherHome.vue      # 教师端首页
 │   │   ├── HomeworkList.vue     # 作业管理
-│   │   └── SubmissionList.vue   # 提交管理
+│   │   ├── SubmissionList.vue   # 提交管理
+│   │   └── Messages.vue         # 私信管理
 │   ├── router/          # 路由配置
 │   │   └── index.js
 │   ├── services/        # API服务
@@ -89,15 +115,19 @@ frontend/
 
 ## API 接口
 
-### 学生管理
-- `GET /api/students` - 获取所有学生
-- `GET /api/students/{id}` - 根据ID获取学生
-- `POST /api/students` - 创建学生
-- `PUT /api/students/{id}` - 更新学生信息
-- `DELETE /api/students/{id}` - 删除学生
+### 认证管理
+- `POST /api/auth/login` - 用户登录
+- `POST /api/auth/register/student` - 学生注册
+- `POST /api/auth/register/teacher` - 教师注册
+
+### 用户管理
+- `GET /api/users/students` - 获取所有学生
+- `GET /api/users/teachers` - 获取所有教师
+- `GET /api/users/{id}` - 根据ID获取用户
 
 ### 作业管理
 - `GET /api/homework` - 获取所有作业
+- `GET /api/homework/teacher/{teacherId}` - 根据教师ID获取作业
 - `GET /api/homework/active` - 获取有效作业
 - `POST /api/homework` - 创建作业
 - `PUT /api/homework/{id}` - 更新作业
@@ -108,6 +138,13 @@ frontend/
 - `POST /api/submissions` - 提交作业
 - `POST /api/submissions/{id}/grade` - 批改作业
 - `GET /api/submissions/check-submission` - 检查是否已提交
+
+### 私信管理
+- `GET /api/messages/user/{userId}` - 获取用户消息
+- `GET /api/messages/conversation/{userId1}/{userId2}` - 获取对话
+- `POST /api/messages/send` - 发送消息
+- `POST /api/messages/mark-read/{messageId}` - 标记为已读
+- `GET /api/messages/unread-count/{userId}` - 获取未读消息数
 
 ## 运行项目
 
@@ -142,24 +179,33 @@ npm run dev
 ## 示例数据
 
 系统已包含示例数据:
-- 3名学生
+- 2名教师（张老师、李老师）
+- 3名学生（张三、李四、王五）
 - 3个作业任务
 - 3个作业提交记录
+- 示例私信记录
 
 ## 前端功能
 
-### 主要页面
-- **首页**: 系统概览、统计数据展示、快速导航
-- **学生管理**: 学生信息的增删改查、搜索筛选
+### 教师端功能
+- **教师首页**: 教师工作台、快速导航
 - **作业管理**: 作业发布、编辑、状态管理、截止时间控制
-- **提交管理**: 作业提交、批改评分、评语管理
+- **批改作业**: 查看学生提交、评分、评语管理
+- **私信管理**: 与学生沟通、消息通知
+
+### 学生端功能
+- **学生首页**: 学生工作台、快速导航
+- **作业列表**: 查看作业、提交作业
+- **我的提交**: 查看提交记录、批改结果
+- **私信管理**: 与教师沟通、消息通知
 
 ### 技术特点
 - 响应式设计，适配不同屏幕尺寸
 - 使用 Element Plus 组件库，界面美观
-- Vue Router 实现单页面应用导航
+- Vue Router 实现单页面应用导航和角色权限控制
 - Axios 封装 RESTful API 调用
 - 完整的表单验证和错误处理
+- 实时消息通知系统
 
 ## 开发说明
 

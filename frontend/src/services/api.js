@@ -26,19 +26,43 @@ api.interceptors.response.use(
   }
 )
 
-// 学生相关 API
+// 认证相关 API
+export const authApi = {
+  // 登录
+  login: (credentials) => api.post('/auth/login', credentials),
+  
+  // 学生注册
+  registerStudent: (user) => api.post('/auth/register/student', user),
+  
+  // 教师注册
+  registerTeacher: (user) => api.post('/auth/register/teacher', user)
+}
+
+// 用户相关 API
+export const userApi = {
+  // 获取所有学生
+  getAllStudents: () => api.get('/users/students'),
+  
+  // 获取所有教师
+  getAllTeachers: () => api.get('/users/teachers'),
+  
+  // 根据ID获取用户
+  getUserById: (id) => api.get(`/users/${id}`)
+}
+
+// 学生相关 API (保持兼容性)
 export const studentApi = {
   // 获取所有学生
-  getAllStudents: () => api.get('/students'),
+  getAllStudents: () => api.get('/users/students'),
   
   // 根据ID获取学生
-  getStudentById: (id) => api.get(`/students/${id}`),
+  getStudentById: (id) => api.get(`/users/${id}`),
   
   // 根据学号获取学生
   getStudentByStudentId: (studentId) => api.get(`/students/student-id/${studentId}`),
   
   // 创建学生
-  createStudent: (student) => api.post('/students', student),
+  createStudent: (student) => api.post('/auth/register/student', student),
   
   // 更新学生
   updateStudent: (id, student) => api.put(`/students/${id}`, student),
@@ -54,6 +78,9 @@ export const studentApi = {
 export const homeworkApi = {
   // 获取所有作业
   getAllHomework: () => api.get('/homework'),
+  
+  // 根据教师ID获取作业
+  getHomeworkByTeacher: (teacherId) => api.get(`/homework/teacher/${teacherId}`),
   
   // 根据ID获取作业
   getHomeworkById: (id) => api.get(`/homework/${id}`),
@@ -104,6 +131,24 @@ export const submissionApi = {
   checkSubmission: (studentId, homeworkId) => api.get('/submissions/check-submission', {
     params: { studentId, homeworkId }
   })
+}
+
+// 私信相关 API
+export const messageApi = {
+  // 获取用户消息
+  getUserMessages: (userId) => api.get(`/messages/user/${userId}`),
+  
+  // 获取对话
+  getConversation: (userId1, userId2) => api.get(`/messages/conversation/${userId1}/${userId2}`),
+  
+  // 发送消息
+  sendMessage: (message) => api.post('/messages/send', message),
+  
+  // 标记为已读
+  markAsRead: (messageId) => api.post(`/messages/mark-read/${messageId}`),
+  
+  // 获取未读消息数
+  getUnreadCount: (userId) => api.get(`/messages/unread-count/${userId}`)
 }
 
 export default api

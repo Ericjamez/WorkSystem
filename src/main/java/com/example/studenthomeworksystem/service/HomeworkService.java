@@ -17,6 +17,10 @@ public class HomeworkService {
         return homeworkMapper.findAll();
     }
     
+    public List<Homework> getHomeworkByTeacherId(Long teacherId) {
+        return homeworkMapper.findByTeacherId(teacherId);
+    }
+    
     public Homework getHomeworkById(Long id) {
         return homeworkMapper.findById(id);
     }

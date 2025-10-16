@@ -8,14 +8,20 @@ import java.util.List;
 @Mapper
 public interface HomeworkMapper {
     
-    @Select("SELECT * FROM homework")
+    @Select("SELECT h.*, u.name as teacher_name FROM homework h " +
+            "JOIN teachers t ON h.teacher_id = t.id " +
+            "JOIN users u ON t.id = u.id " +
+            "ORDER BY h.create_time DESC")
     List<Homework> findAll();
     
-    @Select("SELECT * FROM homework WHERE id = #{id}")
+    @Select("SELECT h.*, u.name as teacher_name FROM homework h " +
+            "JOIN teachers t ON h.teacher_id = t.id " +
+            "JOIN users u ON t.id = u.id " +
+            "WHERE h.id = #{id}")
     Homework findById(Long id);
     
-    @Insert("INSERT INTO homework (title, description, course_name, deadline, total_score) " +
-            "VALUES (#{title}, #{description}, #{courseName}, #{deadline}, #{totalScore})")
+    @Insert("INSERT INTO homework (teacher_id, title, description, course_name, deadline, total_score) " +
+            "VALUES (#{teacherId}, #{title}, #{description}, #{courseName}, #{deadline}, #{totalScore})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Homework homework);
     
@@ -27,9 +33,22 @@ public interface HomeworkMapper {
     @Delete("DELETE FROM homework WHERE id = #{id}")
     int delete(Long id);
     
-    @Select("SELECT * FROM homework WHERE course_name = #{courseName}")
+    @Select("SELECT h.*, u.name as teacher_name FROM homework h " +
+            "JOIN teachers t ON h.teacher_id = t.id " +
+            "JOIN users u ON t.id = u.id " +
+            "WHERE h.course_name = #{courseName}")
     List<Homework> findByCourseName(String courseName);
     
-    @Select("SELECT * FROM homework WHERE deadline > NOW()")
+    @Select("SELECT h.*, u.name as teacher_name FROM homework h " +
+            "JOIN teachers t ON h.teacher_id = t.id " +
+            "JOIN users u ON t.id = u.id " +
+            "WHERE h.deadline > NOW()")
     List<Homework> findActiveHomework();
+    
+    @Select("SELECT h.*, u.name as teacher_name FROM homework h " +
+            "JOIN teachers t ON h.teacher_id = t.id " +
+            "JOIN users u ON t.id = u.id " +
+            "WHERE h.teacher_id = #{teacherId} " +
+            "ORDER BY h.create_time DESC")
+    List<Homework> findByTeacherId(Long teacherId);
 }

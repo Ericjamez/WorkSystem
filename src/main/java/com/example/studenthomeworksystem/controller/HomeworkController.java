@@ -6,7 +6,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/homework")
@@ -16,19 +18,35 @@ public class HomeworkController {
     private HomeworkService homeworkService;
     
     @GetMapping
-    public ResponseEntity<List<Homework>> getAllHomework() {
-        List<Homework> homeworkList = homeworkService.getAllHomework();
-        return ResponseEntity.ok(homeworkList);
+    public Map<String, Object> getAllHomework() {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            List<Homework> homeworkList = homeworkService.getAllHomework();
+            response.put("success", true);
+            response.put("data", homeworkList);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "获取作业列表失败");
+        }
+        
+        return response;
     }
     
-    @GetMapping("/{id}")
-    public ResponseEntity<Homework> getHomeworkById(@PathVariable Long id) {
-        Homework homework = homeworkService.getHomeworkById(id);
-        if (homework != null) {
-            return ResponseEntity.ok(homework);
-        } else {
-            return ResponseEntity.notFound().build();
+    @GetMapping("/teacher/{teacherId}")
+    public Map<String, Object> getHomeworkByTeacher(@PathVariable Long teacherId) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            List<Homework> homeworkList = homeworkService.getHomeworkByTeacherId(teacherId);
+            response.put("success", true);
+            response.put("data", homeworkList);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "获取教师作业列表失败");
         }
+        
+        return response;
     }
     
     @PostMapping
