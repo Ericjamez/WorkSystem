@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: 'http://localhost:8080/api',
   timeout: 10000
 })
 
@@ -149,6 +149,32 @@ export const messageApi = {
   
   // 获取未读消息数
   getUnreadCount: (userId) => api.get(`/messages/unread-count/${userId}`)
+}
+
+// 管理员相关 API
+export const adminApi = {
+  // 学院管理
+  getAllColleges: () => api.get('/admin/colleges'),
+  getCollegeById: (id) => api.get(`/admin/colleges/${id}`),
+  createCollege: (college) => api.post('/admin/colleges', college),
+  updateCollege: (id, college) => api.put(`/admin/colleges/${id}`, college),
+  deleteCollege: (id) => api.delete(`/admin/colleges/${id}`),
+  
+  // 专业管理
+  getAllMajors: () => api.get('/admin/majors'),
+  getMajorById: (id) => api.get(`/admin/majors/${id}`),
+  getMajorsByCollegeId: (collegeId) => api.get(`/admin/majors/college/${collegeId}`),
+  createMajor: (major) => api.post('/admin/majors', major),
+  updateMajor: (id, major) => api.put(`/admin/majors/${id}`, major),
+  deleteMajor: (id) => api.delete(`/admin/majors/${id}`),
+  
+  // 班级管理
+  getAllClasses: () => api.get('/admin/classes'),
+  getClassById: (id) => api.get(`/admin/classes/${id}`),
+  getClassesByMajorId: (majorId) => api.get(`/admin/classes/major/${majorId}`),
+  createClass: (clazz) => api.post('/admin/classes', clazz),
+  updateClass: (id, clazz) => api.put(`/admin/classes/${id}`, clazz),
+  deleteClass: (id) => api.delete(`/admin/classes/${id}`)
 }
 
 export default api

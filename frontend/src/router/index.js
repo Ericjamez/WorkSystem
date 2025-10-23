@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
 import StudentHome from '../views/StudentHome.vue'
 import TeacherHome from '../views/TeacherHome.vue'
+import AdminHome from '../views/AdminHome.vue'
 import HomeworkList from '../views/HomeworkList.vue'
 import SubmissionList from '../views/SubmissionList.vue'
 import Messages from '../views/Messages.vue'
@@ -65,6 +66,37 @@ const routes = [
     name: 'TeacherMessages',
     component: Messages,
     meta: { requiresAuth: true, role: 'TEACHER' }
+  },
+  // 管理员端路由
+  {
+    path: '/admin/home',
+    name: 'AdminHome',
+    component: AdminHome,
+    meta: { requiresAuth: true, role: 'ADMIN' }
+  },
+  {
+    path: '/admin/colleges',
+    name: 'AdminColleges',
+    component: AdminHome,
+    meta: { requiresAuth: true, role: 'ADMIN' }
+  },
+  {
+    path: '/admin/majors',
+    name: 'AdminMajors',
+    component: AdminHome,
+    meta: { requiresAuth: true, role: 'ADMIN' }
+  },
+  {
+    path: '/admin/classes',
+    name: 'AdminClasses',
+    component: AdminHome,
+    meta: { requiresAuth: true, role: 'ADMIN' }
+  },
+  {
+    path: '/admin/students',
+    name: 'AdminStudents',
+    component: AdminHome,
+    meta: { requiresAuth: true, role: 'ADMIN' }
   }
 ]
 
@@ -90,6 +122,8 @@ router.beforeEach((to, from, next) => {
       next('/student/home')
     } else if (user.role === 'TEACHER') {
       next('/teacher/home')
+    } else if (user.role === 'ADMIN') {
+      next('/admin/home')
     } else {
       next('/login')
     }

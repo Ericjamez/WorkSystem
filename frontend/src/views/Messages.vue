@@ -4,49 +4,42 @@
       <template #header>
         <div class="card-header">
           <span>私信管理</span>
-          <el-button type="primary" @click="showNewMessageDialog = true">
-            发送新消息
-          </el-button>
         </div>
       </template>
 
       <el-row :gutter="20">
-        <!-- 消息列表 -->
-        <el-col :span="8">
-          <el-card class="message-list">
+        <!-- 联系人列表 -->
+        <el-col :span="6">
+          <el-card class="contact-list">
             <template #header>
-              <span>消息列表</span>
+              <span>联系人</span>
             </template>
-            <div class="message-items">
+            <div class="contact-items">
               <div
-                v-for="message in messages"
-                :key="message.id"
-                class="message-item"
-                :class="{ active: selectedConversation && 
-                  ((selectedConversation.userId1 === message.senderId && selectedConversation.userId2 === message.receiverId) ||
-                   (selectedConversation.userId1 === message.receiverId && selectedConversation.userId2 === message.senderId)) }"
-                @click="selectConversation(message)"
+                v-for="contact in contacts"
+                :key="contact.id"
+                class="contact-item"
+                :class="{ active: selectedContact && selectedContact.id === contact.id }"
+                @click="selectContact(contact)"
               >
-                <div class="message-header">
-                  <span class="sender-name">
-                    {{ message.senderId === user.id ? message.receiverName : message.senderName }}
-                  </span>
+                <div class="contact-header">
+                  <span class="contact-name">{{ contact.name }}</span>
                   <el-tag
-                    :type="message.senderRole === 'TEACHER' ? 'warning' : 'success'"
+                    :type="contact.role === 'TEACHER' ? 'warning' : 'success'"
                     size="small"
                   >
-                    {{ message.senderRole === 'TEACHER' ? '教师' : '学生' }}
+                    {{ contact.role === 'TEACHER' ? '教师' : '学生' }}
                   </el-tag>
                 </div>
-                <div class="message-preview">
-                  {{ message.messageContent }}
+                <div class="last-message">
+                  {{ contact.lastMessage || '暂无消息' }}
                 </div>
-                <div class="message-time">
-                  {{ formatTime(message.createTime) }}
+                <div class="contact-time">
+                  {{ contact.lastTime ? formatTime(contact.lastTime) : '' }}
                 </div>
                 <el-badge
-                  v-if="!message.isRead && message.receiverId === user.id"
-                  value="未读"
+                  v-if="contact.unreadCount > 0"
+                  :value="contact.unreadCount"
                   class="unread-badge"
                 />
               </div>
@@ -55,7 +48,7 @@
         </el-col>
 
         <!-- 对话内容 -->
-        <el-col :span="16">
+        <el-col :span="18">
           <el-card class="conversation" v-if="selectedConversation">
             <template #header>
               <div class="conversation-header">
@@ -99,68 +92,17 @@
             </div>
           </el-card>
 
-          <el-empty v-else description="请选择对话或发送新消息" />
+          <el-card class="welcome-card" v-else>
+            <el-empty description="请选择联系人开始对话" />
+          </el-card>
         </el-col>
       </el-row>
     </el-card>
-
-    <!-- 发送新消息对话框 -->
-    <el-dialog
-      title="发送新消息"
-      v-model="showNewMessageDialog"
-      width="500px"
-    >
-      <el-form :model="newMessageForm" label-width="80px">
-        <el-form-item label="收件人">
-          <el-select
-            v-model="newMessageForm.receiverId"
-            placeholder="选择收件人"
-            style="width: 100%"
-          >
-            <el-option-group
-              v-for="group in userGroups"
-              :key="group.label"
-              :label="group.label"
-            >
-              <el-option
-                v-for="user in group.users"
-                :key="user.id"
-                :label="`${user.name} (${user.role === 'TEACHER' ? '教师' : '学生'})`"
-                :value="user.id"
-              >
-                <span>{{ user.name }}</span>
-                <el-tag
-                  :type="user.role === 'TEACHER' ? 'warning' : 'success'"
-                  size="small"
-                  style="margin-left: 10px"
-                >
-                  {{ user.role === 'TEACHER' ? '教师' : '学生' }}
-                </el-tag>
-              </el-option>
-            </el-option-group>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="消息内容">
-          <el-input
-            v-model="newMessageForm.content"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入消息内容..."
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showNewMessageDialog = false">取消</el-button>
-        <el-button type="primary" @click="sendNewMessage" :loading="sending">
-          发送
-        </el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script>
-import { messageApi, userApi } from '../services/api.js'
+import { messageApi } from '../services/api.js'
 
 export default {
   name: 'Messages',
@@ -168,22 +110,29 @@ export default {
     return {
       user: {},
       messages: [],
+      contacts: [],
       conversationMessages: [],
       selectedConversation: null,
+      selectedContact: null,
       newMessage: '',
-      sending: false,
-      showNewMessageDialog: false,
-      newMessageForm: {
-        receiverId: '',
-        content: ''
-      },
-      userGroups: []
+      sending: false
     }
   },
   async mounted() {
     this.loadUserInfo()
     await this.loadMessages()
-    await this.loadUserGroups()
+    await this.loadContacts()
+  },
+  computed: {
+    filteredMessages() {
+      if (!this.selectedContact) {
+        return this.messages
+      }
+      return this.messages.filter(message => 
+        message.senderId === this.selectedContact.id || 
+        message.receiverId === this.selectedContact.id
+      )
+    }
   },
   methods: {
     loadUserInfo() {
@@ -191,6 +140,59 @@ export default {
       if (userData) {
         this.user = JSON.parse(userData)
       }
+    },
+
+    async loadContacts() {
+      try {
+        // 从消息中提取联系人
+        const contactMap = new Map()
+        
+        this.messages.forEach(message => {
+          const otherUserId = message.senderId === this.user.id ? message.receiverId : message.senderId
+          const otherUserName = message.senderId === this.user.id ? message.receiverName : message.senderName
+          const otherUserRole = message.senderId === this.user.id ? message.receiverRole : message.senderRole
+          
+          if (!contactMap.has(otherUserId)) {
+            contactMap.set(otherUserId, {
+              id: otherUserId,
+              name: otherUserName,
+              role: otherUserRole,
+              lastMessage: message.messageContent,
+              lastTime: message.createTime,
+              unreadCount: 0
+            })
+          } else {
+            const contact = contactMap.get(otherUserId)
+            if (new Date(message.createTime) > new Date(contact.lastTime)) {
+              contact.lastMessage = message.messageContent
+              contact.lastTime = message.createTime
+            }
+          }
+          
+          // 计算未读消息数
+          if (!message.isRead && message.receiverId === this.user.id) {
+            const contact = contactMap.get(otherUserId)
+            contact.unreadCount++
+          }
+        })
+        
+        // 转换为数组并按最后时间排序
+        this.contacts = Array.from(contactMap.values())
+          .sort((a, b) => new Date(b.lastTime) - new Date(a.lastTime))
+      } catch (error) {
+        console.error('加载联系人失败:', error)
+      }
+    },
+
+    selectContact(contact) {
+      this.selectedContact = contact
+      this.selectedConversation = {
+        userId1: this.user.id,
+        userId2: contact.id,
+        otherUserName: contact.name,
+        otherUserRole: contact.role
+      }
+      this.loadConversation()
     },
 
     async loadMessages() {
@@ -205,27 +207,6 @@ export default {
       }
     },
 
-    async loadUserGroups() {
-      try {
-        const [studentsRes, teachersRes] = await Promise.all([
-          userApi.getAllStudents(),
-          userApi.getAllTeachers()
-        ])
-        
-        this.userGroups = [
-          {
-            label: '学生',
-            users: studentsRes.success ? studentsRes.data : []
-          },
-          {
-            label: '教师',
-            users: teachersRes.success ? teachersRes.data : []
-          }
-        ]
-      } catch (error) {
-        console.error('获取用户列表失败:', error)
-      }
-    },
 
     async selectConversation(message) {
       const otherUserId = message.senderId === this.user.id ? message.receiverId : message.senderId
@@ -294,39 +275,6 @@ export default {
       }
     },
 
-    async sendNewMessage() {
-      if (!this.newMessageForm.receiverId || !this.newMessageForm.content.trim()) {
-        this.$message.warning('请填写完整信息')
-        return
-      }
-
-      this.sending = true
-      try {
-        const message = {
-          senderId: this.user.id,
-          receiverId: this.newMessageForm.receiverId,
-          messageContent: this.newMessageForm.content.trim()
-        }
-
-        const response = await messageApi.sendMessage(message)
-        if (response.success) {
-          this.$message.success('消息发送成功')
-          this.showNewMessageDialog = false
-          this.newMessageForm = {
-            receiverId: '',
-            content: ''
-          }
-          await this.loadMessages()
-        } else {
-          this.$message.error('消息发送失败')
-        }
-      } catch (error) {
-        console.error('发送消息失败:', error)
-        this.$message.error('消息发送失败')
-      } finally {
-        this.sending = false
-      }
-    },
 
     formatTime(timeString) {
       if (!timeString) return ''
@@ -346,6 +294,56 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.contact-list {
+  height: 600px;
+}
+
+.contact-items {
+  max-height: 540px;
+  overflow-y: auto;
+}
+
+.contact-item {
+  padding: 12px;
+  border-bottom: 1px solid #ebeef5;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.3s;
+}
+
+.contact-item:hover {
+  background-color: #f5f7fa;
+}
+
+.contact-item.active {
+  background-color: #ecf5ff;
+}
+
+.contact-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.contact-name {
+  font-weight: bold;
+}
+
+.last-message {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contact-time {
+  color: #999;
+  font-size: 12px;
 }
 
 .message-list {

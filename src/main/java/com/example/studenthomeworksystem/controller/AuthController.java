@@ -18,12 +18,25 @@ public class AuthController {
     @PostMapping("/login")
     public Map<String, Object> login(@RequestBody Map<String, String> loginData) {
         String username = loginData.get("username");
+        String studentId = loginData.get("studentId");
+        String teacherId = loginData.get("teacherId");
         String password = loginData.get("password");
         
         Map<String, Object> response = new HashMap<>();
         
         try {
-            User user = userService.authenticate(username, password);
+            User user = null;
+            
+            // 优先使用学号或教师编号登录
+            if (studentId != null && !studentId.trim().isEmpty()) {
+                user = userService.authenticateByStudentId(studentId, password);
+            } else if (teacherId != null && !teacherId.trim().isEmpty()) {
+                user = userService.authenticateByTeacherId(teacherId, password);
+            } else if (username != null && !username.trim().isEmpty()) {
+                // 保留原有的用户名登录方式（主要用于管理员）
+                user = userService.authenticate(username, password);
+            }
+            
             if (user != null) {
                 response.put("success", true);
                 response.put("user", user);

@@ -10,6 +10,8 @@ public class Homework {
     private String title;
     private String description;
     private String courseName;
+    private Long classId;
+    private String attachmentPath;
     private LocalDateTime deadline;
     private Integer totalScore;
     private LocalDateTime createTime;
@@ -17,4 +19,5 @@ public class Homework {
     
     // Additional fields for display
     private String teacherName;
+    private String className;
 }

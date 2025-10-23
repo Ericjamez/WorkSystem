@@ -8,33 +8,37 @@ import java.util.List;
 @Mapper
 public interface HomeworkSubmissionMapper {
     
-    @Select("SELECT hs.*, s.name as student_name, s.student_id as student_id_number, " +
+    @Select("SELECT hs.*, u.name as student_name, s.student_id as student_id_number, " +
             "h.title as homework_title, h.course_name " +
             "FROM homework_submissions hs " +
             "LEFT JOIN students s ON hs.student_id = s.id " +
+            "LEFT JOIN users u ON s.id = u.id " +
             "LEFT JOIN homework h ON hs.homework_id = h.id")
     List<HomeworkSubmission> findAllWithDetails();
     
-    @Select("SELECT hs.*, s.name as student_name, s.student_id as student_id_number, " +
+    @Select("SELECT hs.*, u.name as student_name, s.student_id as student_id_number, " +
             "h.title as homework_title, h.course_name " +
             "FROM homework_submissions hs " +
             "LEFT JOIN students s ON hs.student_id = s.id " +
+            "LEFT JOIN users u ON s.id = u.id " +
             "LEFT JOIN homework h ON hs.homework_id = h.id " +
             "WHERE hs.id = #{id}")
     HomeworkSubmission findByIdWithDetails(Long id);
     
-    @Select("SELECT hs.*, s.name as student_name, s.student_id as student_id_number, " +
+    @Select("SELECT hs.*, u.name as student_name, s.student_id as student_id_number, " +
             "h.title as homework_title, h.course_name " +
             "FROM homework_submissions hs " +
             "LEFT JOIN students s ON hs.student_id = s.id " +
+            "LEFT JOIN users u ON s.id = u.id " +
             "LEFT JOIN homework h ON hs.homework_id = h.id " +
             "WHERE hs.student_id = #{studentId}")
     List<HomeworkSubmission> findByStudentIdWithDetails(Long studentId);
     
-    @Select("SELECT hs.*, s.name as student_name, s.student_id as student_id_number, " +
+    @Select("SELECT hs.*, u.name as student_name, s.student_id as student_id_number, " +
             "h.title as homework_title, h.course_name " +
             "FROM homework_submissions hs " +
             "LEFT JOIN students s ON hs.student_id = s.id " +
+            "LEFT JOIN users u ON s.id = u.id " +
             "LEFT JOIN homework h ON hs.homework_id = h.id " +
             "WHERE hs.homework_id = #{homeworkId}")
     List<HomeworkSubmission> findByHomeworkIdWithDetails(Long homeworkId);

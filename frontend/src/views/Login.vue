@@ -13,14 +13,14 @@
           <el-tab-pane label="学生登录" name="student">
             <el-form
               :model="studentForm"
-              :rules="loginRules"
+              :rules="studentLoginRules"
               ref="studentFormRef"
               label-width="80px"
             >
-              <el-form-item label="用户名" prop="username">
+              <el-form-item label="学号" prop="studentId">
                 <el-input
-                  v-model="studentForm.username"
-                  placeholder="请输入用户名"
+                  v-model="studentForm.studentId"
+                  placeholder="请输入学号"
                   prefix-icon="User"
                 />
               </el-form-item>
@@ -49,14 +49,14 @@
           <el-tab-pane label="教师登录" name="teacher">
             <el-form
               :model="teacherForm"
-              :rules="loginRules"
+              :rules="teacherLoginRules"
               ref="teacherFormRef"
               label-width="80px"
             >
-              <el-form-item label="用户名" prop="username">
+              <el-form-item label="教师编号" prop="teacherId">
                 <el-input
-                  v-model="teacherForm.username"
-                  placeholder="请输入用户名"
+                  v-model="teacherForm.teacherId"
+                  placeholder="请输入教师编号"
                   prefix-icon="User"
                 />
               </el-form-item>
@@ -77,6 +77,42 @@
                   :loading="loading"
                 >
                   教师登录
+                </el-button>
+              </el-form-item>
+            </el-form>
+          </el-tab-pane>
+
+          <el-tab-pane label="管理员登录" name="admin">
+            <el-form
+              :model="adminForm"
+              :rules="loginRules"
+              ref="adminFormRef"
+              label-width="80px"
+            >
+              <el-form-item label="用户名" prop="username">
+                <el-input
+                  v-model="adminForm.username"
+                  placeholder="请输入管理员用户名"
+                  prefix-icon="User"
+                />
+              </el-form-item>
+              <el-form-item label="密码" prop="password">
+                <el-input
+                  v-model="adminForm.password"
+                  type="password"
+                  placeholder="请输入管理员密码"
+                  prefix-icon="Lock"
+                  show-password
+                />
+              </el-form-item>
+              <el-form-item>
+                <el-button
+                  type="primary"
+                  style="width: 100%"
+                  @click="handleAdminLogin"
+                  :loading="loading"
+                >
+                  管理员登录
                 </el-button>
               </el-form-item>
             </el-form>
@@ -123,6 +159,14 @@
             </el-form-item>
             <el-form-item label="专业" prop="major">
               <el-input v-model="registerStudentForm.major" />
+            </el-form-item>
+            <el-form-item label="年级" prop="grade">
+              <el-select v-model="registerStudentForm.grade" placeholder="请选择年级" style="width: 100%">
+                <el-option label="2023级" value="2023级" />
+                <el-option label="2022级" value="2022级" />
+                <el-option label="2021级" value="2021级" />
+                <el-option label="2020级" value="2020级" />
+              </el-select>
             </el-form-item>
             <el-form-item label="邮箱" prop="email">
               <el-input v-model="registerStudentForm.email" />
@@ -186,10 +230,14 @@ export default {
       registerLoading: false,
       showRegisterDialog: false,
       studentForm: {
-        username: '',
+        studentId: '',
         password: ''
       },
       teacherForm: {
+        teacherId: '',
+        password: ''
+      },
+      adminForm: {
         username: '',
         password: ''
       },
@@ -200,6 +248,7 @@ export default {
         studentId: '',
         className: '',
         major: '',
+        grade: '',
         email: ''
       },
       registerTeacherForm: {
@@ -234,6 +283,22 @@ export default {
         teacherId: [
           { required: true, message: '请输入教师编号', trigger: 'blur' }
         ]
+      },
+      studentLoginRules: {
+        studentId: [
+          { required: true, message: '请输入学号', trigger: 'blur' }
+        ],
+        password: [
+          { required: true, message: '请输入密码', trigger: 'blur' }
+        ]
+      },
+      teacherLoginRules: {
+        teacherId: [
+          { required: true, message: '请输入教师编号', trigger: 'blur' }
+        ],
+        password: [
+          { required: true, message: '请输入密码', trigger: 'blur' }
+        ]
       }
     }
   },
@@ -248,8 +313,8 @@ export default {
           this.$message.success('学生登录成功')
           // 存储用户信息到本地存储
           localStorage.setItem('user', JSON.stringify(response.user))
-          // 跳转到学生首页
-          this.$router.push('/student/home')
+          // 根据用户角色跳转到对应首页
+          this.redirectByRole(response.user.role)
         } else {
           // 显示详细的错误信息
           this.$message.error(response.message || '用户名或密码错误')
@@ -277,8 +342,37 @@ export default {
           this.$message.success('教师登录成功')
           // 存储用户信息到本地存储
           localStorage.setItem('user', JSON.stringify(response.user))
-          // 跳转到教师首页
-          this.$router.push('/teacher/home')
+          // 根据用户角色跳转到对应首页
+          this.redirectByRole(response.user.role)
+        } else {
+          // 显示详细的错误信息
+          this.$message.error(response.message || '用户名或密码错误')
+        }
+      } catch (error) {
+        console.error('登录失败:', error)
+        // 显示详细的错误信息
+        if (error.response && error.response.data) {
+          this.$message.error(error.response.data.message || '登录失败，请检查网络连接')
+        } else {
+          this.$message.error('登录失败：' + (error.message || '未知错误'))
+        }
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async handleAdminLogin() {
+      try {
+        await this.$refs.adminFormRef.validate()
+        this.loading = true
+        
+        const response = await authApi.login(this.adminForm)
+        if (response.success) {
+          this.$message.success('管理员登录成功')
+          // 存储用户信息到本地存储
+          localStorage.setItem('user', JSON.stringify(response.user))
+          // 根据用户角色跳转到对应首页
+          this.redirectByRole(response.user.role)
         } else {
           // 显示详细的错误信息
           this.$message.error(response.message || '用户名或密码错误')
@@ -335,6 +429,7 @@ export default {
         studentId: '',
         className: '',
         major: '',
+        grade: '',
         email: ''
       }
       this.registerTeacherForm = {
@@ -344,6 +439,24 @@ export default {
         teacherId: '',
         department: '',
         email: ''
+      }
+    },
+    
+    redirectByRole(role) {
+      switch (role) {
+        case 'STUDENT':
+          this.$router.push('/student/home')
+          break
+        case 'TEACHER':
+          this.$router.push('/teacher/home')
+          break
+        case 'ADMIN':
+          this.$router.push('/admin/home')
+          break
+        default:
+          console.error('未知的用户角色:', role)
+          this.$message.error('用户角色错误，请联系管理员')
+          this.$router.push('/login')
       }
     }
   }

@@ -19,6 +19,20 @@ public interface UserMapper {
             "FROM users u " +
             "LEFT JOIN students s ON u.id = s.id " +
             "LEFT JOIN teachers t ON u.id = t.id " +
+            "WHERE s.student_id = #{studentId}")
+    User findByStudentId(String studentId);
+    
+    @Select("SELECT u.*, s.student_id, s.class_name, s.major, t.teacher_id, t.department " +
+            "FROM users u " +
+            "LEFT JOIN students s ON u.id = s.id " +
+            "LEFT JOIN teachers t ON u.id = t.id " +
+            "WHERE t.teacher_id = #{teacherId}")
+    User findByTeacherId(String teacherId);
+    
+    @Select("SELECT u.*, s.student_id, s.class_name, s.major, t.teacher_id, t.department " +
+            "FROM users u " +
+            "LEFT JOIN students s ON u.id = s.id " +
+            "LEFT JOIN teachers t ON u.id = t.id " +
             "WHERE u.id = #{id}")
     User findById(Long id);
     

@@ -39,6 +39,7 @@
         <el-table-column prop="studentId" label="学号" width="120" />
         <el-table-column prop="name" label="姓名" width="120" />
         <el-table-column prop="className" label="班级" width="200" />
+        <el-table-column prop="grade" label="年级" width="120" />
         <el-table-column prop="email" label="邮箱" min-width="200" />
         <el-table-column prop="phone" label="电话" width="150" />
         <el-table-column prop="createTime" label="创建时间" width="180">
@@ -88,6 +89,14 @@
         <el-form-item label="班级" prop="className">
           <el-input v-model="studentForm.className" />
         </el-form-item>
+        <el-form-item label="年级" prop="grade">
+          <el-select v-model="studentForm.grade" placeholder="请选择年级" style="width: 100%">
+            <el-option label="2023级" value="2023级" />
+            <el-option label="2022级" value="2022级" />
+            <el-option label="2021级" value="2021级" />
+            <el-option label="2020级" value="2020级" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="邮箱" prop="email">
           <el-input v-model="studentForm.email" />
         </el-form-item>
@@ -122,6 +131,7 @@ export default {
         studentId: '',
         name: '',
         className: '',
+        grade: '',
         email: '',
         phone: ''
       },
@@ -217,6 +227,7 @@ export default {
         studentId: '',
         name: '',
         className: '',
+        grade: '',
         email: '',
         phone: ''
       }

@@ -8,4 +8,11 @@ public class Student {
     private String studentId;
     private String className;
     private String major;
+    private String grade;
+    private Long classId;
+    
+    // 关联信息
+    private String collegeName;
+    private String majorName;
+    private String classNameFull;
 }

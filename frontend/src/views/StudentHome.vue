@@ -31,20 +31,28 @@
             <span>私信</span>
             <el-badge v-if="unreadCount > 0" :value="unreadCount" class="badge" />
           </el-menu-item>
-          <el-menu-item @click="handleLogout">
-            <el-icon><SwitchButton /></el-icon>
-            <span>退出登录</span>
-          </el-menu-item>
         </el-menu>
       </el-aside>
 
       <!-- 主内容区域 -->
       <el-container>
-        <el-header style="text-align: center; font-size: 24px; background: #409EFF; color: white;">
-          学生作业管理系统 - 学生端
-          <div class="user-info">
-            <span>欢迎，{{ user.name }}</span>
-            <el-tag type="success" style="margin-left: 10px;">学生</el-tag>
+        <el-header style="background: #409EFF; color: white;">
+          <div class="header-content">
+            <div class="header-title">
+              <h2>学生作业管理系统 - 学生端</h2>
+            </div>
+            <div class="header-user">
+              <span>欢迎，{{ user.name }}</span>
+              <el-tag type="success" style="margin-left: 10px;">学生</el-tag>
+              <el-button 
+                type="text" 
+                style="color: white; margin-left: 15px;" 
+                @click="handleLogout"
+              >
+                <el-icon><SwitchButton /></el-icon>
+                退出登录
+              </el-button>
+            </div>
           </div>
         </el-header>
         <el-main>
@@ -132,14 +140,24 @@ export default {
 }
 
 .el-header {
-  padding: 0;
+  padding: 0 20px;
   line-height: 60px;
+}
+
+.header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  height: 100%;
 }
 
-.user-info {
+.header-title h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: normal;
+}
+
+.header-user {
   display: flex;
   align-items: center;
   font-size: 16px;

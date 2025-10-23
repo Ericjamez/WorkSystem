@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>作业管理</span>
-          <el-button type="primary" @click="showAddDialog = true">
+          <el-button v-if="isTeacher" type="primary" @click="showAddDialog = true">
             <el-icon><Plus /></el-icon>
             发布作业
           </el-button>
@@ -61,7 +61,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right" v-if="isTeacher">
           <template #default="scope">
             <el-button
               size="small"
@@ -100,12 +100,43 @@
         <el-form-item label="课程名称" prop="courseName">
           <el-input v-model="homeworkForm.courseName" />
         </el-form-item>
+        <el-form-item label="选择班级" prop="classId">
+          <el-select v-model="homeworkForm.classId" placeholder="请选择班级" style="width: 100%;">
+            <el-option
+              v-for="classItem in classList"
+              :key="classItem.id"
+              :label="classItem.name"
+              :value="classItem.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="作业描述" prop="description">
           <el-input
             v-model="homeworkForm.description"
             type="textarea"
             :rows="4"
           />
+        </el-form-item>
+        <el-form-item label="作业附件">
+          <el-upload
+            class="upload-demo"
+            :action="uploadUrl"
+            :on-success="handleUploadSuccess"
+            :on-error="handleUploadError"
+            :before-upload="beforeUpload"
+            :show-file-list="true"
+            :file-list="fileList"
+          >
+            <el-button type="primary">
+              <el-icon><Upload /></el-icon>
+              上传文件
+            </el-button>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持上传文档、图片等文件，单个文件不超过10MB
+              </div>
+            </template>
+          </el-upload>
         </el-form-item>
         <el-form-item label="截止时间" prop="deadline">
           <el-date-picker
@@ -134,14 +165,16 @@
 </template>
 
 <script>
-import { homeworkApi } from '../services/api.js'
+import { homeworkApi, adminApi } from '../services/api.js'
 
 export default {
   name: 'HomeworkList',
   data() {
     return {
+      user: {},
       homework: [],
       filteredHomework: [],
+      classList: [],
       loading: false,
       searchText: '',
       showActiveOnly: false,
@@ -150,16 +183,23 @@ export default {
       homeworkForm: {
         title: '',
         courseName: '',
+        classId: null,
         description: '',
         deadline: '',
-        totalScore: 100
+        totalScore: 100,
+        attachmentPath: ''
       },
+      fileList: [],
+      uploadUrl: 'http://localhost:8080/api/upload',
       rules: {
         title: [
           { required: true, message: '请输入作业标题', trigger: 'blur' }
         ],
         courseName: [
           { required: true, message: '请输入课程名称', trigger: 'blur' }
+        ],
+        classId: [
+          { required: true, message: '请选择班级', trigger: 'change' }
         ],
         description: [
           { required: true, message: '请输入作业描述', trigger: 'blur' }
@@ -174,9 +214,23 @@ export default {
     }
   },
   async mounted() {
+    this.loadUserInfo()
     await this.loadHomework()
+    await this.loadClasses()
+  },
+  computed: {
+    isTeacher() {
+      return this.user.role === 'TEACHER'
+    }
   },
   methods: {
+    loadUserInfo() {
+      const userData = localStorage.getItem('user')
+      if (userData) {
+        this.user = JSON.parse(userData)
+      }
+    },
+
     async loadHomework() {
       this.loading = true
       try {
@@ -278,6 +332,45 @@ export default {
     formatDate(dateString) {
       if (!dateString) return ''
       return new Date(dateString).toLocaleString('zh-CN')
+    },
+
+    // 加载班级列表
+    async loadClasses() {
+      try {
+        const response = await adminApi.getAllClasses()
+        if (response.success) {
+          this.classList = response.classes || []
+        } else {
+          this.$message.error('加载班级列表失败')
+        }
+      } catch (error) {
+        console.error('加载班级列表失败:', error)
+        this.$message.error('加载班级列表失败')
+      }
+    },
+
+    // 文件上传相关方法
+    beforeUpload(file) {
+      const isLt10M = file.size / 1024 / 1024 < 10
+      if (!isLt10M) {
+        this.$message.error('文件大小不能超过 10MB!')
+        return false
+      }
+      return true
+    },
+
+    handleUploadSuccess(response, file) {
+      if (response.success) {
+        this.homeworkForm.attachmentPath = response.filePath
+        this.$message.success('文件上传成功')
+      } else {
+        this.$message.error('文件上传失败')
+      }
+    },
+
+    handleUploadError(error) {
+      console.error('文件上传失败:', error)
+      this.$message.error('文件上传失败')
     }
   },
   watch: {

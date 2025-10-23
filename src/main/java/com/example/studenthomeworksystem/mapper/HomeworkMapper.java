@@ -8,9 +8,10 @@ import java.util.List;
 @Mapper
 public interface HomeworkMapper {
     
-    @Select("SELECT h.*, u.name as teacher_name FROM homework h " +
+    @Select("SELECT h.*, u.name as teacher_name, c.name as class_name FROM homework h " +
             "JOIN teachers t ON h.teacher_id = t.id " +
             "JOIN users u ON t.id = u.id " +
+            "LEFT JOIN classes c ON h.class_id = c.id " +
             "ORDER BY h.create_time DESC")
     List<Homework> findAll();
     
@@ -20,13 +21,14 @@ public interface HomeworkMapper {
             "WHERE h.id = #{id}")
     Homework findById(Long id);
     
-    @Insert("INSERT INTO homework (teacher_id, title, description, course_name, deadline, total_score) " +
-            "VALUES (#{teacherId}, #{title}, #{description}, #{courseName}, #{deadline}, #{totalScore})")
+    @Insert("INSERT INTO homework (teacher_id, title, description, course_name, class_id, attachment_path, deadline, total_score) " +
+            "VALUES (#{teacherId}, #{title}, #{description}, #{courseName}, #{classId}, #{attachmentPath}, #{deadline}, #{totalScore})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Homework homework);
     
     @Update("UPDATE homework SET title = #{title}, description = #{description}, " +
-            "course_name = #{courseName}, deadline = #{deadline}, total_score = #{totalScore} " +
+            "course_name = #{courseName}, class_id = #{classId}, attachment_path = #{attachmentPath}, " +
+            "deadline = #{deadline}, total_score = #{totalScore} " +
             "WHERE id = #{id}")
     int update(Homework homework);
     

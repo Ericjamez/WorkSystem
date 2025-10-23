@@ -21,6 +21,22 @@ public class UserService {
         return null;
     }
     
+    public User authenticateByStudentId(String studentId, String password) {
+        User user = userMapper.findByStudentId(studentId);
+        if (user != null && user.getPassword().equals(password)) {
+            return user;
+        }
+        return null;
+    }
+    
+    public User authenticateByTeacherId(String teacherId, String password) {
+        User user = userMapper.findByTeacherId(teacherId);
+        if (user != null && user.getPassword().equals(password)) {
+            return user;
+        }
+        return null;
+    }
+    
     public User findById(Long id) {
         return userMapper.findById(id);
     }
