@@ -557,55 +557,46 @@ export default {
     },
 
     // 获取作业提交统计信息（教师端）
-    getSubmissionStats(homework) {
-      // 这里需要根据实际数据计算提交统计
-      // 暂时返回默认统计信息
-      // 实际实现应该：
-      // 1. 根据作业的classId获取班级学生总数
-      // 2. 根据作业ID获取已提交的学生数
-      // 3. 计算提交比例
-      
-      // 临时实现：根据作业ID返回不同的统计信息
-      let submitted = 0
-      let total = 0
-      
-      // 根据作业ID返回不同的模拟数据
-      switch(homework.id) {
-        case 1: // Java基础编程作业
-          submitted = 2
-          total = 3
-          break
-        case 2: // Spring Boot项目实践
-          submitted = 1
-          total = 3
-          break
-        case 3: // 数据库设计作业
-          submitted = 0
-          total = 3
-          break
-        default:
-          submitted = 0
-          total = 0
-      }
-      
-      // 根据提交比例设置标签类型
-      let type = 'info'
-      if (total > 0) {
-        const ratio = submitted / total
-        if (ratio === 1) {
-          type = 'success' // 全部提交
-        } else if (ratio >= 0.5) {
-          type = 'warning' // 超过一半提交
-        } else if (ratio > 0) {
-          type = 'info' // 有提交但少于一半
-        } else {
-          type = 'danger' // 无人提交
+    async getSubmissionStats(homework) {
+      try {
+        // 获取该作业的所有提交
+        const response = await submissionApi.getSubmissionsByHomework(homework.id)
+        let submissions = []
+        
+        // 统一处理API响应格式
+        if (Array.isArray(response)) {
+          submissions = response
+        } else if (response && response.success !== undefined && response.data) {
+          submissions = response.data
         }
-      }
-      
-      return {
-        text: `${submitted}/${total}`,
-        type: type
+        
+        // 计算统计信息
+        const totalSubmissions = submissions.length
+        const gradedSubmissions = submissions.filter(sub => sub.score).length
+        
+        // 根据批改情况设置标签类型
+        let type = 'info'
+        if (totalSubmissions === 0) {
+          type = 'danger' // 无人提交
+        } else if (gradedSubmissions === totalSubmissions) {
+          type = 'success' // 全部已批改
+        } else if (gradedSubmissions > 0) {
+          type = 'warning' // 部分已批改
+        } else {
+          type = 'info' // 全部未批改
+        }
+        
+        return {
+          text: `${gradedSubmissions}/${totalSubmissions}`,
+          type: type
+        }
+      } catch (error) {
+        console.error('获取作业提交统计失败:', error)
+        // 出错时返回默认统计
+        return {
+          text: '0/0',
+          type: 'info'
+        }
       }
     },
 
