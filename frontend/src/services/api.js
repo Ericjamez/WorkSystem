@@ -130,6 +130,15 @@ export const submissionApi = {
   // 检查是否已提交
   checkSubmission: (studentId, homeworkId) => api.get('/submissions/check-submission', {
     params: { studentId, homeworkId }
+  }),
+  
+  // 打回作业
+  returnSubmission: (id, returnReason) => api.post(`/submissions/${id}/return`, { returnReason }),
+  
+  // 重新提交作业
+  resubmitHomework: (id, content, attachmentPath) => api.post(`/submissions/${id}/resubmit`, {
+    content,
+    attachmentPath
   })
 }
 

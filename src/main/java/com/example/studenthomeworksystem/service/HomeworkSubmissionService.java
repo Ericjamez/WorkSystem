@@ -13,6 +13,9 @@ public class HomeworkSubmissionService {
     @Autowired
     private HomeworkSubmissionMapper homeworkSubmissionMapper;
     
+    @Autowired
+    private HomeworkService homeworkService;
+    
     public List<HomeworkSubmission> getAllSubmissionsWithDetails() {
         return homeworkSubmissionMapper.findAllWithDetails();
     }
@@ -80,5 +83,42 @@ public class HomeworkSubmissionService {
     public boolean hasStudentSubmittedHomework(Long studentId, Long homeworkId) {
         int count = homeworkSubmissionMapper.existsByStudentAndHomework(studentId, homeworkId);
         return count > 0;
+    }
+    
+    public boolean returnSubmission(Long submissionId, String returnReason) {
+        try {
+            int result = homeworkSubmissionMapper.returnSubmission(submissionId, returnReason);
+            return result > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    public boolean resubmitHomework(Long submissionId, String content, String attachmentPath) {
+        try {
+            // 获取提交信息以检查作业截止时间
+            HomeworkSubmission submission = homeworkSubmissionMapper.findByIdWithDetails(submissionId);
+            if (submission == null) {
+                return false;
+            }
+            
+            // 检查作业是否已截止
+            com.example.studenthomeworksystem.entity.Homework homework = homeworkService.getHomeworkById(submission.getHomeworkId());
+            if (homework == null) {
+                return false;
+            }
+            
+            // 检查作业截止时间
+            if (homework.getDeadline() != null && homework.getDeadline().isBefore(java.time.LocalDateTime.now())) {
+                return false; // 作业已截止，不允许重新提交
+            }
+            
+            int result = homeworkSubmissionMapper.resubmit(submissionId, content, attachmentPath);
+            return result > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 }

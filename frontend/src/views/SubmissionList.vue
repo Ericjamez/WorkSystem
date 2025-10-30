@@ -3,8 +3,12 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>作业提交管理</span>
-          <el-button type="primary" @click="showSubmitDialog = true">
+          <span>{{ isStudent ? '我的提交' : '作业提交管理' }}</span>
+          <el-button 
+            v-if="isStudent" 
+            type="primary" 
+            @click="showSubmitDialog = true"
+          >
             <el-icon><Plus /></el-icon>
             提交作业
           </el-button>
@@ -15,11 +19,12 @@
       <div class="filter-container">
         <el-input
           v-model="searchText"
-          placeholder="搜索学生姓名或作业标题"
+          :placeholder="isStudent ? '搜索作业标题' : '搜索学生姓名或作业标题'"
           style="width: 300px; margin-right: 10px;"
           clearable
         />
         <el-select
+          v-if="isTeacher"
           v-model="selectedStudent"
           placeholder="选择学生"
           style="width: 200px; margin-right: 10px;"
@@ -83,28 +88,40 @@
         <el-table-column label="操作" width="250" fixed="right">
           <template #default="scope">
             <el-button
+              v-if="isTeacher && !scope.row.score"
               size="small"
               type="primary"
               @click="handleGrade(scope.row)"
-              v-if="!scope.row.score"
             >
               批改
             </el-button>
             <el-button
+              v-if="isTeacher && scope.row.score"
               size="small"
               type="warning"
               @click="handleGrade(scope.row)"
-              v-else
             >
               修改评分
             </el-button>
             <el-button
+              v-if="isTeacher"
               size="small"
               type="danger"
               @click="handleDelete(scope.row)"
             >
               删除
             </el-button>
+            <template v-if="isStudent">
+              <el-button
+                v-if="canResubmit(scope.row)"
+                size="small"
+                type="warning"
+                @click="handleResubmit(scope.row)"
+              >
+                重新提交
+              </el-button>
+              <span v-else>-</span>
+            </template>
           </template>
         </el-table-column>
       </el-table>
@@ -122,7 +139,7 @@
         ref="submitFormRef"
         label-width="100px"
       >
-        <el-form-item label="学生" prop="studentId">
+        <el-form-item v-if="isTeacher" label="学生" prop="studentId">
           <el-select
             v-model="submitForm.studentId"
             placeholder="选择学生"
@@ -135,6 +152,9 @@
               :value="student.id"
             />
           </el-select>
+        </el-form-item>
+        <el-form-item v-if="isStudent" label="学生">
+          <el-input :value="user.name" disabled />
         </el-form-item>
         <el-form-item label="作业" prop="homeworkId">
           <el-select
@@ -154,9 +174,30 @@
           <el-input
             v-model="submitForm.content"
             type="textarea"
-            :rows="6"
-            placeholder="请输入作业内容..."
+            :rows="4"
+            placeholder="请输入作业内容或说明..."
           />
+        </el-form-item>
+        <el-form-item label="作业附件">
+          <el-upload
+            class="upload-demo"
+            :action="uploadUrl"
+            :on-success="handleUploadSuccess"
+            :on-error="handleUploadError"
+            :before-upload="beforeUpload"
+            :show-file-list="true"
+            :file-list="fileList"
+          >
+            <el-button type="primary">
+              <el-icon><Upload /></el-icon>
+              上传文件
+            </el-button>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持上传文档、图片、代码等文件，单个文件不超过10MB
+              </div>
+            </template>
+          </el-upload>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -193,6 +234,19 @@
             disabled
           />
         </el-form-item>
+        <el-form-item label="作业附件" v-if="currentSubmission?.attachmentPath">
+          <div class="attachment-container">
+            <el-button
+              type="primary"
+              size="small"
+              @click="downloadAttachment(currentSubmission.attachmentPath)"
+            >
+              <el-icon><Download /></el-icon>
+              下载附件
+            </el-button>
+            <span class="attachment-name">{{ getFileName(currentSubmission.attachmentPath) }}</span>
+          </div>
+        </el-form-item>
         <el-form-item label="分数" prop="score">
           <el-input-number
             v-model="gradeForm.score"
@@ -216,6 +270,70 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 重新提交作业对话框 -->
+    <el-dialog
+      title="重新提交作业"
+      v-model="showResubmitDialog"
+      width="600px"
+    >
+      <el-form
+        :model="resubmitForm"
+        :rules="resubmitRules"
+        ref="resubmitFormRef"
+        label-width="100px"
+      >
+        <el-form-item label="学生">
+          <el-input :value="user.name" disabled />
+        </el-form-item>
+        <el-form-item label="作业">
+          <el-input :value="currentSubmission?.homeworkTitle" disabled />
+        </el-form-item>
+        <el-form-item label="打回原因">
+          <el-input
+            :value="currentSubmission?.returnReason"
+            type="textarea"
+            :rows="3"
+            disabled
+          />
+        </el-form-item>
+        <el-form-item label="提交内容" prop="content">
+          <el-input
+            v-model="resubmitForm.content"
+            type="textarea"
+            :rows="4"
+            placeholder="请根据教师反馈修改作业内容..."
+          />
+        </el-form-item>
+        <el-form-item label="作业附件">
+          <el-upload
+            class="upload-demo"
+            :action="uploadUrl"
+            :on-success="handleResubmitUploadSuccess"
+            :on-error="handleUploadError"
+            :before-upload="beforeUpload"
+            :show-file-list="true"
+            :file-list="resubmitFileList"
+          >
+            <el-button type="primary">
+              <el-icon><Upload /></el-icon>
+              上传文件
+            </el-button>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持上传文档、图片、代码等文件，单个文件不超过10MB
+              </div>
+            </template>
+          </el-upload>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showResubmitDialog = false">取消</el-button>
+        <el-button type="warning" @click="handleResubmitSubmit">
+          重新提交
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -224,61 +342,118 @@ import { submissionApi, studentApi, homeworkApi } from '../services/api.js'
 
 export default {
   name: 'SubmissionList',
-  data() {
-    return {
-      submissions: [],
-      filteredSubmissions: [],
-      students: [],
-      homework: [],
-      activeHomework: [],
-      loading: false,
-      searchText: '',
-      selectedStudent: null,
-      selectedHomework: null,
-      showSubmitDialog: false,
-      showGradeDialog: false,
-      currentSubmission: null,
-      submitForm: {
-        studentId: '',
-        homeworkId: '',
-        content: ''
-      },
-      gradeForm: {
-        score: null,
-        teacherComment: ''
-      },
-      submitRules: {
-        studentId: [
-          { required: true, message: '请选择学生', trigger: 'change' }
-        ],
-        homeworkId: [
-          { required: true, message: '请选择作业', trigger: 'change' }
-        ],
-        content: [
-          { required: true, message: '请输入提交内容', trigger: 'blur' }
-        ]
-      },
-      gradeRules: {
-        score: [
-          { required: true, message: '请输入分数', trigger: 'blur' }
-        ]
+    data() {
+      return {
+        user: {},
+        submissions: [],
+        filteredSubmissions: [],
+        students: [],
+        homework: [],
+        activeHomework: [],
+        loading: false,
+        searchText: '',
+        selectedStudent: null,
+        selectedHomework: null,
+        showSubmitDialog: false,
+        showGradeDialog: false,
+        currentSubmission: null,
+        submitForm: {
+          studentId: '',
+          homeworkId: '',
+          content: '',
+          attachmentPath: ''
+        },
+        gradeForm: {
+          score: null,
+          teacherComment: ''
+        },
+        fileList: [],
+        uploadUrl: 'http://localhost:8080/api/upload',
+        submitRules: {
+          studentId: [
+            { required: true, message: '请选择学生', trigger: 'change' }
+          ],
+          homeworkId: [
+            { required: true, message: '请选择作业', trigger: 'change' }
+          ],
+          content: [
+            { required: true, message: '请输入提交内容', trigger: 'blur' }
+          ]
+        },
+        gradeRules: {
+          score: [
+            { required: true, message: '请输入分数', trigger: 'blur' }
+          ]
+        },
+        showResubmitDialog: false,
+        resubmitForm: {
+          content: '',
+          attachmentPath: ''
+        },
+        resubmitFileList: [],
+        resubmitRules: {
+          content: [
+            { required: true, message: '请输入提交内容', trigger: 'blur' }
+          ]
+        }
       }
-    }
-  },
+    },
   async mounted() {
+    this.loadUserInfo()
     await Promise.all([
       this.loadSubmissions(),
       this.loadStudents(),
       this.loadHomework()
     ])
   },
+  computed: {
+    isTeacher() {
+      return this.user.role === 'TEACHER'
+    },
+    isStudent() {
+      return this.user.role === 'STUDENT'
+    }
+  },
   methods: {
+    loadUserInfo() {
+      const userData = localStorage.getItem('user')
+      if (userData) {
+        this.user = JSON.parse(userData)
+      }
+    },
+
     async loadSubmissions() {
       this.loading = true
       try {
-        const response = await submissionApi.getAllSubmissions()
-        this.submissions = response
-        this.filteredSubmissions = response
+        let response
+        if (this.isStudent) {
+          // 学生只能看到自己的提交
+          response = await submissionApi.getSubmissionsByStudent(this.user.id)
+        } else {
+          // 教师可以看到所有提交
+          response = await submissionApi.getAllSubmissions()
+        }
+        
+        // 统一处理API响应格式
+        if (Array.isArray(response)) {
+          // 格式1: 直接返回数组
+          this.submissions = response
+          this.filteredSubmissions = response
+        } else if (response && response.success !== undefined) {
+          // 格式2: {success: true, data: [...]}
+          if (response.success && Array.isArray(response.data)) {
+            this.submissions = response.data
+            this.filteredSubmissions = response.data
+          } else {
+            this.submissions = []
+            this.filteredSubmissions = []
+            this.$message.error(response.message || '加载提交列表失败')
+          }
+        } else {
+          this.submissions = []
+          this.filteredSubmissions = []
+          this.$message.error('加载提交列表失败')
+        }
       } catch (error) {
         console.error('加载提交列表失败:', error)
         this.$message.error('加载提交列表失败')
@@ -350,7 +525,13 @@ export default {
       try {
         await this.$refs.submitFormRef.validate()
         
-        const success = await submissionApi.submitHomework(this.submitForm)
+        // 根据用户角色设置学生ID
+        const submitData = {
+          ...this.submitForm,
+          studentId: this.isStudent ? this.user.id : this.submitForm.studentId
+        }
+        
+        const success = await submissionApi.submitHomework(submitData)
         if (success) {
           this.$message.success('提交成功')
           this.showSubmitDialog = false
@@ -385,17 +566,6 @@ export default {
       }
     },
 
-    resetSubmitForm() {
-      this.submitForm = {
-        studentId: '',
-        homeworkId: '',
-        content: ''
-      }
-      if (this.$refs.submitFormRef) {
-        this.$refs.submitFormRef.resetFields()
-      }
-    },
-
     resetGradeForm() {
       this.gradeForm = {
         score: null,
@@ -407,6 +577,140 @@ export default {
     formatDate(dateString) {
       if (!dateString) return ''
       return new Date(dateString).toLocaleString('zh-CN')
+    },
+
+    // 文件上传相关方法
+    beforeUpload(file) {
+      const isLt10M = file.size / 1024 / 1024 < 10
+      if (!isLt10M) {
+        this.$message.error('文件大小不能超过 10MB!')
+        return false
+      }
+      return true
+    },
+
+    handleUploadSuccess(response, file) {
+      if (response.success) {
+        this.submitForm.attachmentPath = response.filePath
+        this.$message.success('文件上传成功')
+      } else {
+        this.$message.error('文件上传失败')
+      }
+    },
+
+    handleUploadError(error) {
+      console.error('文件上传失败:', error)
+      this.$message.error('文件上传失败')
+    },
+
+    // 下载附件
+    downloadAttachment(filePath) {
+      if (!filePath) {
+        this.$message.error('文件路径不存在')
+        return
+      }
+      
+      // 创建下载链接
+      const downloadUrl = `http://localhost:8080/api/download?filePath=${encodeURIComponent(filePath)}`
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.target = '_blank'
+      link.download = this.getFileName(filePath)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    },
+
+    // 获取文件名
+    getFileName(filePath) {
+      if (!filePath) return ''
+      return filePath.split('/').pop() || filePath
+    },
+
+    resetSubmitForm() {
+      this.submitForm = {
+        studentId: '',
+        homeworkId: '',
+        content: '',
+        attachmentPath: ''
+      }
+      this.fileList = []
+      if (this.$refs.submitFormRef) {
+        this.$refs.submitFormRef.resetFields()
+      }
+    },
+
+    // 重新提交作业
+    handleResubmit(submission) {
+      this.currentSubmission = submission
+      this.resubmitForm = {
+        content: submission.content || '',
+        attachmentPath: submission.attachmentPath || ''
+      }
+      this.resubmitFileList = []
+      this.showResubmitDialog = true
+    },
+
+    // 重新提交文件上传成功
+    handleResubmitUploadSuccess(response, file) {
+      if (response.success) {
+        this.resubmitForm.attachmentPath = response.filePath
+        this.$message.success('文件上传成功')
+      } else {
+        this.$message.error('文件上传失败')
+      }
+    },
+
+    // 提交重新提交
+    async handleResubmitSubmit() {
+      try {
+        await this.$refs.resubmitFormRef.validate()
+        
+        const success = await submissionApi.resubmitHomework(
+          this.currentSubmission.id,
+          this.resubmitForm.content,
+          this.resubmitForm.attachmentPath
+        )
+        if (success) {
+          this.$message.success('作业重新提交成功')
+          this.showResubmitDialog = false
+          await this.loadSubmissions()
+          this.resetResubmitForm()
+        } else {
+          this.$message.error('作业重新提交失败')
+        }
+      } catch (error) {
+        console.error('重新提交作业失败:', error)
+        this.$message.error('重新提交作业失败')
+      }
+    },
+
+    // 检查是否可以重新提交
+    canResubmit(submission) {
+      // 只有有打回原因的作业才能重新提交（即被打回过的作业）
+      if (!submission.returnReason) {
+        return false
+      }
+      
+      // 检查作业是否已截止
+      if (submission.homeworkDeadline) {
+        const deadline = new Date(submission.homeworkDeadline)
+        const now = new Date()
+        return deadline > now
+      }
+      
+      // 如果没有截止时间信息，默认允许重新提交
+      return true
+    },
+
+    // 重置重新提交表单
+    resetResubmitForm() {
+      this.resubmitForm = {
+        content: '',
+        attachmentPath: ''
+      }
+      this.resubmitFileList = []
+      this.currentSubmission = null
     }
   },
   watch: {
@@ -446,5 +750,16 @@ export default {
 
 .filter-container {
   margin-bottom: 20px;
+}
+
+.attachment-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.attachment-name {
+  color: #606266;
+  font-size: 14px;
 }
 </style>

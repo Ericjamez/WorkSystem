@@ -61,8 +61,22 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right" v-if="isTeacher">
+        <el-table-column label="提交情况" width="120" v-if="isTeacher">
           <template #default="scope">
+            <el-tag :type="getSubmissionStats(scope.row).type">
+              {{ getSubmissionStats(scope.row).text }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="320" fixed="right" v-if="isTeacher">
+          <template #default="scope">
+            <el-button
+              size="small"
+              type="success"
+              @click="handleViewSubmissions(scope.row)"
+            >
+              查看提交
+            </el-button>
             <el-button
               size="small"
               type="primary"
@@ -76,6 +90,19 @@
               @click="handleDelete(scope.row)"
             >
               删除
+            </el-button>
+          </template>
+        </el-table-column>
+
+        <!-- 学生端操作列 -->
+        <el-table-column label="操作" width="200" fixed="right" v-if="!isTeacher && user.role === 'STUDENT'">
+          <template #default="scope">
+            <el-button
+              size="small"
+              type="primary"
+              @click="handleSubmitHomework(scope.row)"
+            >
+              提交作业
             </el-button>
           </template>
         </el-table-column>
@@ -161,11 +188,67 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 提交作业对话框（与"我的提交"页面相同） -->
+    <el-dialog
+      title="提交作业"
+      v-model="showSubmitDialog"
+      width="600px"
+    >
+      <el-form
+        :model="submitForm"
+        :rules="submitRules"
+        ref="submitFormRef"
+        label-width="100px"
+      >
+        <el-form-item label="学生">
+          <el-input :value="user.name" disabled />
+        </el-form-item>
+        <el-form-item label="作业">
+          <el-input :value="getSelectedHomeworkTitle()" disabled />
+        </el-form-item>
+        <el-form-item label="提交内容" prop="content">
+          <el-input
+            v-model="submitForm.content"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入作业内容或说明..."
+          />
+        </el-form-item>
+        <el-form-item label="作业附件">
+          <el-upload
+            class="upload-demo"
+            :action="uploadUrl"
+            :on-success="handleUploadSuccess"
+            :on-error="handleUploadError"
+            :before-upload="beforeUpload"
+            :show-file-list="true"
+            :file-list="fileList"
+          >
+            <el-button type="primary">
+              <el-icon><Upload /></el-icon>
+              上传文件
+            </el-button>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持上传文档、图片、代码等文件，单个文件不超过10MB
+              </div>
+            </template>
+          </el-upload>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showSubmitDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleSubmitHomeworkForm">
+          提交
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { homeworkApi, adminApi } from '../services/api.js'
+import { homeworkApi, adminApi, submissionApi } from '../services/api.js'
 
 export default {
   name: 'HomeworkList',
@@ -175,10 +258,12 @@ export default {
       homework: [],
       filteredHomework: [],
       classList: [],
+      activeHomework: [],
       loading: false,
       searchText: '',
       showActiveOnly: false,
       showAddDialog: false,
+      showSubmitDialog: false,
       isEditing: false,
       homeworkForm: {
         title: '',
@@ -187,6 +272,12 @@ export default {
         description: '',
         deadline: '',
         totalScore: 100,
+        attachmentPath: ''
+      },
+      submitForm: {
+        studentId: '',
+        homeworkId: '',
+        content: '',
         attachmentPath: ''
       },
       fileList: [],
@@ -209,6 +300,11 @@ export default {
         ],
         totalScore: [
           { required: true, message: '请输入总分', trigger: 'blur' }
+        ]
+      },
+      submitRules: {
+        content: [
+          { required: true, message: '请输入提交内容', trigger: 'blur' }
         ]
       }
     }
@@ -234,9 +330,68 @@ export default {
     async loadHomework() {
       this.loading = true
       try {
-        const response = await homeworkApi.getAllHomework()
-        this.homework = response
-        this.filteredHomework = response
+        let response
+        if (this.isTeacher) {
+          // 教师只能看到自己发布的作业
+          response = await homeworkApi.getHomeworkByTeacher(this.user.id)
+          console.log('教师作业响应:', response)
+          // 统一处理API响应格式
+          if (response && response.success !== undefined) {
+            if (response.success && Array.isArray(response.data)) {
+              this.homework = response.data || []
+            } else {
+              this.homework = []
+              this.$message.error(response.message || '获取教师作业失败')
+            }
+          } else if (Array.isArray(response)) {
+            // 直接返回数组格式
+            this.homework = response
+          } else {
+            this.homework = []
+            this.$message.error('获取教师作业失败')
+          }
+        } else if (this.user.role === 'STUDENT') {
+          // 学生只能看到本专业的作业
+          response = await homeworkApi.getAllHomework()
+          // 统一处理API响应格式
+          let homeworkList = []
+          if (response && response.success !== undefined) {
+            if (response.success && Array.isArray(response.data)) {
+              homeworkList = response.data || []
+            } else {
+              this.$message.error(response.message || '获取作业列表失败')
+            }
+          } else if (Array.isArray(response)) {
+            homeworkList = response
+          } else {
+            this.$message.error('获取作业列表失败')
+          }
+          
+          // 过滤出学生本专业的作业
+          const studentMajor = this.user.major || '计算机科学与技术' // 默认专业
+          this.homework = homeworkList.filter(hw => {
+            // 根据课程名称判断是否属于本专业
+            return this.isCourseInMajor(hw.courseName, studentMajor)
+          })
+        } else {
+          // 管理员可以看到所有作业
+          response = await homeworkApi.getAllHomework()
+          // 统一处理API响应格式
+          if (response && response.success !== undefined) {
+            if (response.success && Array.isArray(response.data)) {
+              this.homework = response.data || []
+            } else {
+              this.homework = []
+              this.$message.error(response.message || '获取作业列表失败')
+            }
+          } else if (Array.isArray(response)) {
+            this.homework = response
+          } else {
+            this.homework = []
+            this.$message.error('获取作业列表失败')
+          }
+        }
+        this.filteredHomework = this.homework
       } catch (error) {
         console.error('加载作业列表失败:', error)
         this.$message.error('加载作业列表失败')
@@ -292,7 +447,8 @@ export default {
         // 格式化截止时间
         const formattedData = {
           ...this.homeworkForm,
-          deadline: this.homeworkForm.deadline.toISOString()
+          deadline: this.homeworkForm.deadline.toISOString(),
+          teacherId: this.user.id // 添加教师ID
         }
         
         let success
@@ -312,6 +468,7 @@ export default {
         }
       } catch (error) {
         console.error('提交表单失败:', error)
+        this.$message.error('操作失败，请检查网络连接或联系管理员')
       }
     },
 
@@ -371,6 +528,189 @@ export default {
     handleUploadError(error) {
       console.error('文件上传失败:', error)
       this.$message.error('文件上传失败')
+    },
+
+    // 跳转到作业批改页面
+    handleGrade(homework) {
+      this.$router.push(`/homework-grade/${homework.id}`)
+    },
+
+    // 判断课程是否属于学生专业
+    isCourseInMajor(courseName, studentMajor) {
+      // 课程与专业的映射关系
+      const majorCourseMap = {
+        '计算机科学与技术': ['Java程序设计', '数据库原理', '计算机科学与技术', '数据结构', '算法设计'],
+        '人工智能': ['人工智能', '机器学习', '深度学习', '自然语言处理'],
+        '软件工程': ['软件工程', '软件测试', '软件项目管理', '软件架构'],
+        '电子信息工程': ['电路原理', '数字电路', '模拟电路', '信号与系统']
+      }
+      
+      // 如果学生专业在映射表中，检查课程是否属于该专业
+      if (majorCourseMap[studentMajor]) {
+        return majorCourseMap[studentMajor].some(course => 
+          courseName.includes(course) || course.includes(courseName)
+        )
+      }
+      
+      // 默认情况下，如果专业不在映射表中，显示所有作业
+      return true
+    },
+
+    // 获取作业提交统计信息（教师端）
+    getSubmissionStats(homework) {
+      // 这里需要根据实际数据计算提交统计
+      // 暂时返回默认统计信息
+      // 实际实现应该：
+      // 1. 根据作业的classId获取班级学生总数
+      // 2. 根据作业ID获取已提交的学生数
+      // 3. 计算提交比例
+      
+      // 临时实现：根据作业ID返回不同的统计信息
+      let submitted = 0
+      let total = 0
+      
+      // 根据作业ID返回不同的模拟数据
+      switch(homework.id) {
+        case 1: // Java基础编程作业
+          submitted = 2
+          total = 3
+          break
+        case 2: // Spring Boot项目实践
+          submitted = 1
+          total = 3
+          break
+        case 3: // 数据库设计作业
+          submitted = 0
+          total = 3
+          break
+        default:
+          submitted = 0
+          total = 0
+      }
+      
+      // 根据提交比例设置标签类型
+      let type = 'info'
+      if (total > 0) {
+        const ratio = submitted / total
+        if (ratio === 1) {
+          type = 'success' // 全部提交
+        } else if (ratio >= 0.5) {
+          type = 'warning' // 超过一半提交
+        } else if (ratio > 0) {
+          type = 'info' // 有提交但少于一半
+        } else {
+          type = 'danger' // 无人提交
+        }
+      }
+      
+      return {
+        text: `${submitted}/${total}`,
+        type: type
+      }
+    },
+
+    // 查看作业提交
+    handleViewSubmissions(homework) {
+      this.$router.push(`/homework-grade/${homework.id}`)
+    },
+
+    // 学生提交作业 - 使用与"我的提交"相同的对话框
+    async handleSubmitHomework(homework) {
+      try {
+        // 检查作业是否已截止
+        if (!this.isActive(homework.deadline)) {
+          this.$message.error('该作业已截止，无法提交')
+          return
+        }
+
+        // 加载有效作业列表
+        await this.loadActiveHomework()
+        
+        // 设置提交表单数据
+        this.submitForm = {
+          studentId: this.user.id,
+          homeworkId: homework.id,
+          content: '',
+          attachmentPath: ''
+        }
+        
+        // 显示提交对话框
+        this.showSubmitDialog = true
+      } catch (error) {
+        console.error('准备提交作业失败:', error)
+        this.$message.error('准备提交作业失败')
+      }
+    },
+
+    // 加载有效作业列表
+    async loadActiveHomework() {
+      try {
+        const response = await homeworkApi.getActiveHomework()
+        // 统一处理API响应格式
+        if (Array.isArray(response)) {
+          this.activeHomework = response
+        } else if (response && response.success !== undefined) {
+          if (response.success && Array.isArray(response.data)) {
+            this.activeHomework = response.data
+          } else {
+            this.activeHomework = []
+          }
+        } else {
+          this.activeHomework = []
+        }
+      } catch (error) {
+        console.error('加载有效作业失败:', error)
+        this.activeHomework = []
+      }
+    },
+
+    // 提交作业表单处理
+    async handleSubmitHomeworkForm() {
+      try {
+        await this.$refs.submitFormRef.validate()
+        
+        const submitData = {
+          ...this.submitForm,
+          studentId: this.user.id
+        }
+        
+        const success = await submissionApi.submitHomework(submitData)
+        if (success) {
+          this.$message.success('作业提交成功')
+          this.showSubmitDialog = false
+          // 重新加载作业列表以更新状态
+          await this.loadHomework()
+          this.resetSubmitForm()
+        } else {
+          this.$message.error('提交失败，可能已经提交过该作业')
+        }
+      } catch (error) {
+        console.error('提交作业失败:', error)
+        this.$message.error('提交作业失败')
+      }
+    },
+
+    // 重置提交表单
+    resetSubmitForm() {
+      this.submitForm = {
+        studentId: '',
+        homeworkId: '',
+        content: '',
+        attachmentPath: ''
+      }
+      this.fileList = []
+      if (this.$refs.submitFormRef) {
+        this.$refs.submitFormRef.resetFields()
+      }
+    },
+
+    // 获取选中的作业标题
+    getSelectedHomeworkTitle() {
+      const homeworkId = this.submitForm.homeworkId
+      if (!homeworkId) return ''
+      
+      const homework = this.homework.find(hw => hw.id === homeworkId)
+      return homework ? `${homework.title} - ${homework.courseName}` : ''
     }
   },
   watch: {

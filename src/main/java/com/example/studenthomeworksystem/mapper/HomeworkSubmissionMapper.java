@@ -26,7 +26,7 @@ public interface HomeworkSubmissionMapper {
     HomeworkSubmission findByIdWithDetails(Long id);
     
     @Select("SELECT hs.*, u.name as student_name, s.student_id as student_id_number, " +
-            "h.title as homework_title, h.course_name " +
+            "h.title as homework_title, h.course_name, h.deadline as homework_deadline " +
             "FROM homework_submissions hs " +
             "LEFT JOIN students s ON hs.student_id = s.id " +
             "LEFT JOIN users u ON s.id = u.id " +
@@ -40,13 +40,13 @@ public interface HomeworkSubmissionMapper {
             "LEFT JOIN students s ON hs.student_id = s.id " +
             "LEFT JOIN users u ON s.id = u.id " +
             "LEFT JOIN homework h ON hs.homework_id = h.id " +
-            "WHERE hs.homework_id = #{homeworkId}")
+            "WHERE hs.homework_id = #{homeworkId} AND hs.status != 'RETURNED'")
     List<HomeworkSubmission> findByHomeworkIdWithDetails(Long homeworkId);
     
     @Insert("INSERT INTO homework_submissions (student_id, homework_id, content, " +
-            "attachment_path, score, teacher_comment) " +
+            "attachment_path, score, teacher_comment, status) " +
             "VALUES (#{studentId}, #{homeworkId}, #{content}, #{attachmentPath}, " +
-            "#{score}, #{teacherComment})")
+            "#{score}, #{teacherComment}, 'SUBMITTED')")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(HomeworkSubmission submission);
     
@@ -67,4 +67,14 @@ public interface HomeworkSubmissionMapper {
             "AND homework_id = #{homeworkId}")
     int existsByStudentAndHomework(@Param("studentId") Long studentId, 
                                   @Param("homeworkId") Long homeworkId);
+    
+    @Update("UPDATE homework_submissions SET status = 'RETURNED', " +
+            "return_reason = #{returnReason} WHERE id = #{id}")
+    int returnSubmission(@Param("id") Long id, @Param("returnReason") String returnReason);
+    
+    @Update("UPDATE homework_submissions SET status = 'RESUBMITTED', " +
+            "content = #{content}, attachment_path = #{attachmentPath}, " +
+            "submit_time = CURRENT_TIMESTAMP WHERE id = #{id}")
+    int resubmit(@Param("id") Long id, @Param("content") String content, 
+                @Param("attachmentPath") String attachmentPath);
 }

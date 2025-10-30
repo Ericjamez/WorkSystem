@@ -93,4 +93,27 @@ public class HomeworkSubmissionController {
         boolean hasSubmitted = homeworkSubmissionService.hasStudentSubmittedHomework(studentId, homeworkId);
         return ResponseEntity.ok(hasSubmitted);
     }
+    
+    @PostMapping("/{id}/return")
+    public ResponseEntity<String> returnSubmission(@PathVariable Long id, @RequestBody Map<String, String> returnData) {
+        String returnReason = returnData.get("returnReason");
+        boolean success = homeworkSubmissionService.returnSubmission(id, returnReason);
+        if (success) {
+            return ResponseEntity.ok("作业打回成功");
+        } else {
+            return ResponseEntity.badRequest().body("作业打回失败");
+        }
+    }
+    
+    @PostMapping("/{id}/resubmit")
+    public ResponseEntity<String> resubmitHomework(@PathVariable Long id, @RequestBody Map<String, String> resubmitData) {
+        String content = resubmitData.get("content");
+        String attachmentPath = resubmitData.get("attachmentPath");
+        boolean success = homeworkSubmissionService.resubmitHomework(id, content, attachmentPath);
+        if (success) {
+            return ResponseEntity.ok("作业重新提交成功");
+        } else {
+            return ResponseEntity.badRequest().body("作业重新提交失败");
+        }
+    }
 }

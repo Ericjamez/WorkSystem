@@ -12,6 +12,8 @@ public class HomeworkSubmission {
     private String attachmentPath;
     private Integer score;
     private String teacherComment;
+    private String status; // SUBMITTED, GRADED, RETURNED, RESUBMITTED
+    private String returnReason;
     private LocalDateTime submitTime;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
@@ -21,4 +23,5 @@ public class HomeworkSubmission {
     private String studentIdNumber;
     private String homeworkTitle;
     private String courseName;
+    private LocalDateTime homeworkDeadline;
 }

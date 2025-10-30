@@ -41,6 +41,46 @@ CREATE TABLE teachers (
 
 CREATE INDEX idx_teacher_id ON teachers(teacher_id);
 
+-- College management tables
+-- Colleges table
+CREATE TABLE colleges (
+                          id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                          name VARCHAR(100) NOT NULL UNIQUE,
+                          description TEXT,
+                          create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                          update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Majors table
+CREATE TABLE majors (
+                        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                        college_id BIGINT NOT NULL,
+                        name VARCHAR(100) NOT NULL,
+                        description TEXT,
+                        create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        FOREIGN KEY (college_id) REFERENCES colleges(id) ON DELETE CASCADE,
+                        UNIQUE KEY unique_college_major (college_id, name)
+);
+
+-- Classes table
+CREATE TABLE classes (
+                         id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                         major_id BIGINT NOT NULL,
+                         name VARCHAR(50) NOT NULL,
+                         description TEXT,
+                         create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                         update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                         FOREIGN KEY (major_id) REFERENCES majors(id) ON DELETE CASCADE,
+                         UNIQUE KEY unique_major_class (major_id, name)
+);
+
+-- Update students table to reference classes
+ALTER TABLE students
+    ADD COLUMN class_id BIGINT,
+    ADD FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE SET NULL;
+
+
 -- Homework assignments table
 CREATE TABLE homework (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -71,6 +111,8 @@ CREATE TABLE homework_submissions (
     attachment_path VARCHAR(500),
     score INT,
     teacher_comment TEXT,
+    status ENUM('SUBMITTED', 'GRADED', 'RETURNED', 'RESUBMITTED') DEFAULT 'SUBMITTED',
+    return_reason TEXT,
     submit_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -99,44 +141,6 @@ CREATE INDEX idx_sender_id ON private_messages(sender_id);
 CREATE INDEX idx_receiver_id ON private_messages(receiver_id);
 CREATE INDEX idx_create_time ON private_messages(create_time);
 
--- College management tables
--- Colleges table
-CREATE TABLE colleges (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE,
-    description TEXT,
-    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
--- Majors table
-CREATE TABLE majors (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    college_id BIGINT NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    description TEXT,
-    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (college_id) REFERENCES colleges(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_college_major (college_id, name)
-);
-
--- Classes table
-CREATE TABLE classes (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    major_id BIGINT NOT NULL,
-    name VARCHAR(50) NOT NULL,
-    description TEXT,
-    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (major_id) REFERENCES majors(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_major_class (major_id, name)
-);
-
--- Update students table to reference classes
-ALTER TABLE students 
-ADD COLUMN class_id BIGINT,
-ADD FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE SET NULL;
 
 -- Insert sample admin user
 INSERT INTO users (username, password, role, name, email, phone) VALUES

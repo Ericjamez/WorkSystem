@@ -22,10 +22,6 @@
             <el-icon><Document /></el-icon>
             <span>作业管理</span>
           </el-menu-item>
-          <el-menu-item index="/teacher/submissions">
-            <el-icon><EditPen /></el-icon>
-            <span>批改作业</span>
-          </el-menu-item>
           <el-menu-item index="/teacher/messages">
             <el-icon><ChatDotRound /></el-icon>
             <span>私信</span>

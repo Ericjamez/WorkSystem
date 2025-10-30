@@ -9,15 +9,13 @@ import java.util.List;
 public interface HomeworkMapper {
     
     @Select("SELECT h.*, u.name as teacher_name, c.name as class_name FROM homework h " +
-            "JOIN teachers t ON h.teacher_id = t.id " +
-            "JOIN users u ON t.id = u.id " +
+            "JOIN users u ON h.teacher_id = u.id " +
             "LEFT JOIN classes c ON h.class_id = c.id " +
             "ORDER BY h.create_time DESC")
     List<Homework> findAll();
     
     @Select("SELECT h.*, u.name as teacher_name FROM homework h " +
-            "JOIN teachers t ON h.teacher_id = t.id " +
-            "JOIN users u ON t.id = u.id " +
+            "JOIN users u ON h.teacher_id = u.id " +
             "WHERE h.id = #{id}")
     Homework findById(Long id);
     
@@ -36,20 +34,17 @@ public interface HomeworkMapper {
     int delete(Long id);
     
     @Select("SELECT h.*, u.name as teacher_name FROM homework h " +
-            "JOIN teachers t ON h.teacher_id = t.id " +
-            "JOIN users u ON t.id = u.id " +
+            "JOIN users u ON h.teacher_id = u.id " +
             "WHERE h.course_name = #{courseName}")
     List<Homework> findByCourseName(String courseName);
     
     @Select("SELECT h.*, u.name as teacher_name FROM homework h " +
-            "JOIN teachers t ON h.teacher_id = t.id " +
-            "JOIN users u ON t.id = u.id " +
+            "JOIN users u ON h.teacher_id = u.id " +
             "WHERE h.deadline > NOW()")
     List<Homework> findActiveHomework();
     
     @Select("SELECT h.*, u.name as teacher_name FROM homework h " +
-            "JOIN teachers t ON h.teacher_id = t.id " +
-            "JOIN users u ON t.id = u.id " +
+            "JOIN users u ON h.teacher_id = u.id " +
             "WHERE h.teacher_id = #{teacherId} " +
             "ORDER BY h.create_time DESC")
     List<Homework> findByTeacherId(Long teacherId);

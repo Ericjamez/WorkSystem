@@ -280,6 +280,7 @@ export default {
     handleClassChange(classId) {
       const selectedClass = this.classes.find(c => c.id === classId)
       if (selectedClass) {
+        this.studentForm.className = selectedClass.name || '未知班级'
         this.studentForm.majorName = selectedClass.majorName || '未知专业'
         this.studentForm.collegeName = selectedClass.collegeName || '未知学院'
       }
@@ -312,7 +313,14 @@ export default {
         
         let response
         if (this.isEditing) {
-          response = await studentApi.updateStudent(this.studentForm.id, this.studentForm)
+          // 更新学生时使用正确的数据格式
+          const updateData = {
+            studentId: this.studentForm.studentId,
+            className: this.studentForm.className || '未知班级',
+            major: this.studentForm.majorName || '未知专业',
+            classId: this.studentForm.classId
+          }
+          response = await studentApi.updateStudent(this.studentForm.id, updateData)
         } else {
           // 添加学生时使用注册接口
           const registerData = {
@@ -321,18 +329,20 @@ export default {
             name: this.studentForm.name,
             email: this.studentForm.email,
             phone: this.studentForm.phone,
-            classId: this.studentForm.classId
+            studentId: this.studentForm.studentId, // 添加学号字段
+            className: this.studentForm.className || '未知班级', // 添加班级名称
+            major: this.studentForm.majorName || '未知专业' // 添加专业名称
           }
           response = await authApi.registerStudent(registerData)
         }
         
-        if (response) {
+        if (response && (response.success || response === '学生信息更新成功')) {
           this.$message.success(this.isEditing ? '更新成功' : '添加成功')
           this.showAddDialog = false
           await this.loadStudents()
           this.resetForm()
         } else {
-          this.$message.error(this.isEditing ? '更新失败' : '添加失败')
+          this.$message.error(response?.message || (this.isEditing ? '更新失败' : '添加失败'))
         }
       } catch (error) {
         console.error('提交表单失败:', error)

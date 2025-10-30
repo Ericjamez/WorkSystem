@@ -6,6 +6,7 @@ import AdminHome from '../views/AdminHome.vue'
 import HomeworkList from '../views/HomeworkList.vue'
 import SubmissionList from '../views/SubmissionList.vue'
 import Messages from '../views/Messages.vue'
+import HomeworkGrade from '../views/HomeworkGrade.vue'
 
 const routes = [
   {
@@ -56,15 +57,15 @@ const routes = [
     meta: { requiresAuth: true, role: 'TEACHER' }
   },
   {
-    path: '/teacher/submissions',
-    name: 'TeacherSubmissions',
-    component: SubmissionList,
-    meta: { requiresAuth: true, role: 'TEACHER' }
-  },
-  {
     path: '/teacher/messages',
     name: 'TeacherMessages',
     component: Messages,
+    meta: { requiresAuth: true, role: 'TEACHER' }
+  },
+  {
+    path: '/homework-grade/:id',
+    name: 'HomeworkGrade',
+    component: HomeworkGrade,
     meta: { requiresAuth: true, role: 'TEACHER' }
   },
   // 管理员端路由

@@ -49,6 +49,27 @@ public class HomeworkController {
         return response;
     }
     
+    @GetMapping("/{id}")
+    public Map<String, Object> getHomeworkById(@PathVariable Long id) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            Homework homework = homeworkService.getHomeworkById(id);
+            if (homework != null) {
+                response.put("success", true);
+                response.put("data", homework);
+            } else {
+                response.put("success", false);
+                response.put("message", "作业不存在");
+            }
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "获取作业信息失败");
+        }
+        
+        return response;
+    }
+    
     @PostMapping
     public ResponseEntity<String> createHomework(@RequestBody Homework homework) {
         boolean success = homeworkService.createHomework(homework);
